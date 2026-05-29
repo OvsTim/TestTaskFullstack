@@ -48,6 +48,7 @@ pnpm dev
 
 - Web: http://localhost:5173  
 - API: http://localhost:3000/api  
+- Swagger UI: http://localhost:3000/api/docs  
 - Health: http://localhost:3000/api/health  
 
 ### Полезные команды
@@ -61,12 +62,28 @@ pnpm dev
 
 ## API (MVP)
 
+Интерактивная документация и тестирование без фронта: **http://localhost:3000/api/docs** (Swagger UI).
+
 | Метод | Путь | Описание |
 |-------|------|----------|
 | GET | `/api/work-entries?from=&to=&sort=` | Список записей |
 | POST | `/api/work-entries` | Создание записи |
 | DELETE | `/api/work-entries/:id` | Удаление |
 | GET | `/api/health` | Проверка API |
+
+Query-параметры списка: `from`, `to` (даты ISO, например `2026-05-01`), `sort` — `asc` или `desc` (по умолчанию `desc`).
+
+Пример тела POST (Try it out в Swagger):
+
+```json
+{
+  "completedAt": "2026-05-29",
+  "workName": "Кладка стены",
+  "volume": 24,
+  "unit": "м³",
+  "performer": "Иванов И.И."
+}
+```
 
 ## Переменные окружения
 

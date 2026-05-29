@@ -40,10 +40,11 @@ export class WorkEntriesService {
   }
 
   async remove(id: string) {
-    try {
-      return await this.prisma.workEntry.delete({ where: { id } });
-    } catch {
+    const existing = await this.prisma.workEntry.findUnique({ where: { id } });
+    if (!existing) {
       throw new NotFoundException(`Work entry ${id} not found`);
     }
+
+    return this.prisma.workEntry.delete({ where: { id } });
   }
 }
