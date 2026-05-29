@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-worklog}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-worklog}
+      POSTGRES_DB: ${POSTGRES_DB:-worklog}
+    ports:
+      # Host port via POSTGRES_PORT (defaults to 15432; 5432/5433 often busy locally)
+      - "${POSTGRES_PORT:-15432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-worklog} -d ${POSTGRES_DB:-worklog}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

@@ -1,0 +1,21 @@
+{
+  "name": "worklog-monorepo",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "db:generate": "dotenv -e .env -- pnpm --filter api exec prisma generate",
+    "db:migrate": "dotenv -e .env -- pnpm --filter api exec prisma migrate dev",
+    "db:push": "dotenv -e .env -- pnpm --filter api exec prisma db push"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^8.0.0",
+    "turbo": "^2.5.4",
+    "typescript": "^5.8.3"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  }
+}
