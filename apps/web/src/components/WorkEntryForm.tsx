@@ -15,10 +15,10 @@ import { useEffect, useState } from 'react';
 
 const { useBreakpoint } = Grid;
 import { fetchMeasurementUnits, type MeasurementUnit } from '../api/measurement-units';
+import { fetchWorkTypes, type WorkType } from '../api/work-types';
 import {
   WORK_ENTRY_PERFORMER_MAX_LENGTH,
   WORK_ENTRY_VOLUME_MAX,
-  WORK_ENTRY_WORK_NAME_MAX_LENGTH,
   createWorkEntry,
   type CreateWorkEntryBody,
 } from '../api/work-entries';
@@ -39,7 +39,9 @@ type WorkEntryFormProps = {
 export function WorkEntryForm({ onCreated, onCancel }: WorkEntryFormProps) {
   const [form] = Form.useForm<FormValues>();
   const [units, setUnits] = useState<MeasurementUnit[]>([]);
+  const [workTypes, setWorkTypes] = useState<WorkType[]>([]);
   const [unitsLoading, setUnitsLoading] = useState(true);
+  const [workTypesLoading, setWorkTypesLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const screens = useBreakpoint();
   const isMobile = !screens.md;
@@ -47,10 +49,11 @@ export function WorkEntryForm({ onCreated, onCancel }: WorkEntryFormProps) {
   useEffect(() => {
     let cancelled = false;
 
-    fetchMeasurementUnits()
-      .then((data) => {
+    Promise.all([fetchMeasurementUnits(), fetchWorkTypes()])
+      .then(([unitsData, workTypesData]) => {
         if (!cancelled) {
-          setUnits(data);
+          setUnits(unitsData);
+          setWorkTypes(workTypesData);
         }
       })
       .catch((error: unknown) => {
@@ -58,13 +61,14 @@ export function WorkEntryForm({ onCreated, onCancel }: WorkEntryFormProps) {
           message.error(
             error instanceof Error
               ? error.message
-              : 'Не удалось загрузить единицы измерения',
+              : 'Не удалось загрузить справочники',
           );
         }
       })
       .finally(() => {
         if (!cancelled) {
           setUnitsLoading(false);
+          setWorkTypesLoading(false);
         }
       });
 
@@ -76,7 +80,7 @@ export function WorkEntryForm({ onCreated, onCancel }: WorkEntryFormProps) {
   const handleFinish = async (values: FormValues) => {
     const input: CreateWorkEntryBody = {
       completedAt: values.completedAt.format('YYYY-MM-DD'),
-      workName: values.workName.trim(),
+      workName: values.workName,
       volume: values.volume,
       unit: values.unit,
       performer: values.performer.trim(),
@@ -97,13 +101,27 @@ export function WorkEntryForm({ onCreated, onCancel }: WorkEntryFormProps) {
     }
   };
 
+  const workTypeSelect = (
+    <Select
+      placeholder="Выберите вид работ"
+      loading={workTypesLoading}
+      style={{ width: '100%' }}
+      popupMatchSelectWidth={false}
+      styles={{ popup: { root: { minWidth: 280 } } }}
+      options={workTypes.map((t) => ({ value: t.name, label: t.name }))}
+      notFoundContent={
+        workTypesLoading ? null : 'Нет видов работ. Добавьте через Swagger.'
+      }
+    />
+  );
+
   const unitSelect = (
     <Select
       placeholder="Единица"
       loading={unitsLoading}
       style={{ width: '100%' }}
       popupMatchSelectWidth={false}
-      dropdownStyle={{ minWidth: 240 }}
+      styles={{ popup: { root: { minWidth: 240 } } }}
       options={units.map((u) => ({ value: u.name, label: u.name }))}
       notFoundContent={
         unitsLoading ? null : 'Нет единиц. Добавьте через Swagger.'
@@ -133,14 +151,11 @@ export function WorkEntryForm({ onCreated, onCancel }: WorkEntryFormProps) {
       </Form.Item>
 
       <Form.Item
-        label="Наименование работ"
+        label="Вид работ"
         name="workName"
-        rules={[{ required: true, message: 'Укажите наименование работ' }]}
+        rules={[{ required: true, message: 'Выберите вид работ' }]}
       >
-        <Input
-          placeholder="Кладка стены"
-          maxLength={WORK_ENTRY_WORK_NAME_MAX_LENGTH}
-        />
+        {workTypeSelect}
       </Form.Item>
 
       {isMobile ? (
@@ -168,7 +183,7 @@ export function WorkEntryForm({ onCreated, onCancel }: WorkEntryFormProps) {
         </>
       ) : (
         <Form.Item label="Объём" required style={{ marginBottom: 0 }}>
-          <Input.Group compact style={{ display: 'flex', gap: 8 }}>
+          <Space.Compact style={{ display: 'flex', gap: 8, width: '100%' }}>
             <Form.Item
               name="volume"
               rules={[{ required: true, message: 'Укажите объём' }]}
@@ -189,7 +204,7 @@ export function WorkEntryForm({ onCreated, onCancel }: WorkEntryFormProps) {
             >
               {unitSelect}
             </Form.Item>
-          </Input.Group>
+          </Space.Compact>
         </Form.Item>
       )}
 

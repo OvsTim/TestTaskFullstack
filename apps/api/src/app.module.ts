@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { MeasurementUnitsModule } from './measurement-units/measurement-units.module';
 import { WorkEntriesModule } from './work-entries/work-entries.module';
+import { WorkTypesModule } from './work-types/work-types.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { WorkEntriesModule } from './work-entries/work-entries.module';
     PrismaModule,
     WorkEntriesModule,
     MeasurementUnitsModule,
+    WorkTypesModule,
   ],
   controllers: [AppController],
 })

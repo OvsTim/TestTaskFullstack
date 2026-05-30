@@ -18,7 +18,7 @@ export type WorkEntry = {
   createdAt: string;
 };
 
-/** Тело POST /api/work-entries — CreateWorkEntryDto */
+/** Название вида работ из справочника (строковый снимок) */
 export type CreateWorkEntryBody = {
   completedAt: IsoDateString;
   workName: string;

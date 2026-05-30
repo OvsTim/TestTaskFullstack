@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { ErrorMessages } from '../common/errors/error-messages';
 import { PrismaService } from '../prisma/prisma.service';
@@ -44,6 +44,13 @@ export class WorkEntriesService {
   }
 
   async create(dto: CreateWorkEntryDto) {
+    const workType = await this.prisma.workType.findUnique({
+      where: { name: dto.workName },
+    });
+    if (!workType) {
+      throw new BadRequestException(ErrorMessages.WORK_TYPE_NAME_UNKNOWN);
+    }
+
     return this.prisma.workEntry.create({
       data: {
         completedAt: new Date(dto.completedAt),

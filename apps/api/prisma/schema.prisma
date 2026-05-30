@@ -13,6 +13,12 @@ model MeasurementUnit {
   createdAt DateTime @default(now())
 }
 
+model WorkType {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+}
+
 model WorkEntry {
   id          String   @id @default(cuid())
   completedAt DateTime @db.Date

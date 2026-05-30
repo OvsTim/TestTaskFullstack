@@ -18,7 +18,11 @@ export class CreateWorkEntryDto {
   @IsDateString({}, { message: 'Дата должна быть в формате ISO 8601 (YYYY-MM-DD)' })
   completedAt!: string;
 
-  @ApiProperty({ example: 'Кладка стены', maxLength: 500 })
+  @ApiProperty({
+    example: 'Кладка стены',
+    maxLength: 500,
+    description: 'Название вида работ из справочника (строковый снимок)',
+  })
   @IsString({ message: 'Наименование работ должно быть строкой' })
   @IsNotEmpty({ message: 'Наименование работ обязательно' })
   @MaxLength(500, { message: 'Наименование работ не должно превышать 500 символов' })

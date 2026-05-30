@@ -23,16 +23,26 @@ describe('WorkEntries (e2e)', () => {
 
   beforeEach(async () => {
     await resetDatabase(prisma);
+    await prisma.workType.create({ data: { name: validCreateWorkEntry.workName } });
   });
 
   afterAll(async () => {
     await app.close();
   });
 
+  async function ensureWorkType(name: string) {
+    await prisma.workType.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+  }
+
   async function createEntry(
     overrides: Partial<typeof validCreateWorkEntry> = {},
   ) {
     const body = { ...validCreateWorkEntry, ...overrides };
+    await ensureWorkType(body.workName);
     const response = await request(app.getHttpServer())
       .post('/api/work-entries')
       .send(body)
@@ -168,6 +178,13 @@ describe('WorkEntries (e2e)', () => {
         .post('/api/work-entries')
         .send({ ...validCreateWorkEntry, workName: '' });
       expectError(response, 400);
+    });
+
+    it('rejects unknown workName not in dictionary', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/api/work-entries')
+        .send({ ...validCreateWorkEntry, workName: 'Несуществующий вид работ' });
+      expectError(response, 400, ErrorMessages.WORK_TYPE_NAME_UNKNOWN);
     });
 
     it('rejects empty unit', async () => {

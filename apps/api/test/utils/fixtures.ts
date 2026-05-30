@@ -11,6 +11,10 @@ export const validCreateWorkEntry = {
   performer: 'Иванов И.И.',
 };
 
+export const validCreateWorkType = {
+  name: 'Кладка стены',
+};
+
 export const validCreateMeasurementUnit = {
   name: 'тест-ед',
 };

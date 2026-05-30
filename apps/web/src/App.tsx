@@ -61,7 +61,7 @@ function App() {
         open={modalOpen}
         onCancel={() => setModalOpen(false)}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
         width={isMobile ? 'calc(100vw - 32px)' : 520}
         styles={{ body: { padding: isMobile ? '16px 12px' : undefined } }}
       >
