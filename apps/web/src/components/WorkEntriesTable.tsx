@@ -1,5 +1,5 @@
 import { DeleteOutlined } from '@ant-design/icons';
-import { Button, DatePicker, Grid, Popconfirm, Space, Table, message } from 'antd';
+import { Button, DatePicker, Flex, Grid, Popconfirm, Table, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
@@ -118,7 +118,7 @@ export function WorkEntriesTable({ reloadKey = 0 }: WorkEntriesTableProps) {
   ];
 
   return (
-    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+    <Flex vertical gap="middle" style={{ width: '100%' }}>
       <DatePicker.RangePicker
         value={dateRange}
         onChange={(range) => setDateRange(range)}
@@ -135,7 +135,8 @@ export function WorkEntriesTable({ reloadKey = 0 }: WorkEntriesTableProps) {
         pagination={false}
         scroll={{ x: 640 }}
         locale={{ emptyText: 'Записей пока нет' }}
+        style={{ width: '100%' }}
       />
-    </Space>
+    </Flex>
   );
 }

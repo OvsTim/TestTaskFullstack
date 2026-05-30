@@ -1,4 +1,3 @@
-import '@ant-design/v5-patch-for-react-19';
 import { ConfigProvider } from 'antd';
 import ruRU from 'antd/locale/ru_RU';
 import dayjs from 'dayjs';
