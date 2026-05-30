@@ -24,6 +24,7 @@ describe('WorkEntries (e2e)', () => {
   beforeEach(async () => {
     await resetDatabase(prisma);
     await prisma.workType.create({ data: { name: validCreateWorkEntry.workName } });
+    await prisma.measurementUnit.create({ data: { name: validCreateWorkEntry.unit } });
   });
 
   afterAll(async () => {
@@ -38,11 +39,20 @@ describe('WorkEntries (e2e)', () => {
     });
   }
 
+  async function ensureMeasurementUnit(name: string) {
+    await prisma.measurementUnit.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+  }
+
   async function createEntry(
     overrides: Partial<typeof validCreateWorkEntry> = {},
   ) {
     const body = { ...validCreateWorkEntry, ...overrides };
     await ensureWorkType(body.workName);
+    await ensureMeasurementUnit(body.unit);
     const response = await request(app.getHttpServer())
       .post('/api/work-entries')
       .send(body)
@@ -162,6 +172,7 @@ describe('WorkEntries (e2e)', () => {
       const originalCreatedAt = created.body.createdAt;
 
       await ensureWorkType('Бетонирование');
+      await ensureMeasurementUnit('м²');
 
       const updatedBody = {
         completedAt: '2026-06-15',
@@ -221,6 +232,24 @@ describe('WorkEntries (e2e)', () => {
       expectError(response, 400, ErrorMessages.WORK_TYPE_NAME_UNKNOWN);
     });
 
+    it('rejects legacy unit when measurement unit was removed from dictionary', async () => {
+      const { response: created } = await createEntry({
+        unit: 'Устаревшая ед',
+      });
+
+      await prisma.measurementUnit.deleteMany({ where: { name: 'Устаревшая ед' } });
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/work-entries/${created.body.id}`)
+        .send({
+          ...validCreateWorkEntry,
+          unit: 'Устаревшая ед',
+          volume: 10,
+        });
+
+      expectError(response, 400, ErrorMessages.MEASUREMENT_UNIT_NAME_UNKNOWN);
+    });
+
     it('PATCH updates workName to another dictionary value', async () => {
       const { response: created } = await createEntry();
       await ensureWorkType('Арматурные работы');
@@ -261,6 +290,13 @@ describe('WorkEntries (e2e)', () => {
         .post('/api/work-entries')
         .send({ ...validCreateWorkEntry, workName: 'Несуществующий вид работ' });
       expectError(response, 400, ErrorMessages.WORK_TYPE_NAME_UNKNOWN);
+    });
+
+    it('rejects unknown unit not in dictionary', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/api/work-entries')
+        .send({ ...validCreateWorkEntry, unit: 'Несуществующая единица' });
+      expectError(response, 400, ErrorMessages.MEASUREMENT_UNIT_NAME_UNKNOWN);
     });
 
     it('rejects empty unit', async () => {
@@ -427,6 +463,15 @@ describe('WorkEntries (e2e)', () => {
         .patch(`/api/work-entries/${created.body.id}`)
         .send({ ...validCreateWorkEntry, workName: 'Несуществующий вид работ' });
       expectError(response, 400, ErrorMessages.WORK_TYPE_NAME_UNKNOWN);
+    });
+
+    it('rejects unknown unit not in dictionary', async () => {
+      const { response: created } = await createEntry();
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/work-entries/${created.body.id}`)
+        .send({ ...validCreateWorkEntry, unit: 'Несуществующая единица' });
+      expectError(response, 400, ErrorMessages.MEASUREMENT_UNIT_NAME_UNKNOWN);
     });
 
     it('rejects empty unit', async () => {

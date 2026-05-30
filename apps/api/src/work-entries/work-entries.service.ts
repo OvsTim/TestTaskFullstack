@@ -45,12 +45,7 @@ export class WorkEntriesService {
   }
 
   async create(dto: CreateWorkEntryDto) {
-    const workType = await this.prisma.workType.findUnique({
-      where: { name: dto.workName },
-    });
-    if (!workType) {
-      throw new BadRequestException(ErrorMessages.WORK_TYPE_NAME_UNKNOWN);
-    }
+    await this.assertDictionaryValues(dto.workName, dto.unit);
 
     return this.prisma.workEntry.create({
       data: {
@@ -69,12 +64,7 @@ export class WorkEntriesService {
       throw new NotFoundException(ErrorMessages.WORK_ENTRY_NOT_FOUND);
     }
 
-    const workType = await this.prisma.workType.findUnique({
-      where: { name: dto.workName },
-    });
-    if (!workType) {
-      throw new BadRequestException(ErrorMessages.WORK_TYPE_NAME_UNKNOWN);
-    }
+    await this.assertDictionaryValues(dto.workName, dto.unit);
 
     return this.prisma.workEntry.update({
       where: { id },
@@ -95,5 +85,23 @@ export class WorkEntriesService {
     }
 
     return this.prisma.workEntry.delete({ where: { id } });
+  }
+
+  private async assertDictionaryValues(
+    workName: string,
+    unit: string,
+  ): Promise<void> {
+    const [workType, measurementUnit] = await Promise.all([
+      this.prisma.workType.findUnique({ where: { name: workName } }),
+      this.prisma.measurementUnit.findUnique({ where: { name: unit } }),
+    ]);
+
+    if (!workType) {
+      throw new BadRequestException(ErrorMessages.WORK_TYPE_NAME_UNKNOWN);
+    }
+
+    if (!measurementUnit) {
+      throw new BadRequestException(ErrorMessages.MEASUREMENT_UNIT_NAME_UNKNOWN);
+    }
   }
 }

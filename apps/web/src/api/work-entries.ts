@@ -50,15 +50,12 @@ export type PaginatedWorkEntriesResponse = {
 /** @deprecated используйте PaginatedWorkEntriesResponse */
 export type PaginatedWorkEntries = PaginatedWorkEntriesResponse;
 
-export const WORK_ENTRY_WORK_NAME_MAX_LENGTH = 500;
-export const WORK_ENTRY_UNIT_MAX_LENGTH = 50;
 export const WORK_ENTRY_PERFORMER_MAX_LENGTH = 200;
 export const WORK_ENTRY_VOLUME_MAX = 9_999_999_999.99;
 
 export const WORK_ENTRIES_DEFAULT_PAGE = 1;
 export const WORK_ENTRIES_DEFAULT_LIMIT = 20;
 export const WORK_ENTRIES_DEFAULT_SORT: WorkEntrySort = 'desc';
-export const WORK_ENTRIES_LIMIT_MAX = 100;
 
 function buildWorkEntriesSearchParams(query: WorkEntriesQuery): string {
   const params = new URLSearchParams();
