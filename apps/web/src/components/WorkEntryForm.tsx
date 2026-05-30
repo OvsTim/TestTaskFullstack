@@ -1,7 +1,19 @@
-import { Button, DatePicker, Form, Input, InputNumber, Select, message } from 'antd';
+import {
+  Button,
+  DatePicker,
+  Form,
+  Grid,
+  Input,
+  InputNumber,
+  Select,
+  Space,
+  message,
+} from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
+
+const { useBreakpoint } = Grid;
 import { fetchMeasurementUnits, type MeasurementUnit } from '../api/measurement-units';
 import {
   WORK_ENTRY_PERFORMER_MAX_LENGTH,
@@ -21,13 +33,16 @@ type FormValues = {
 
 type WorkEntryFormProps = {
   onCreated: () => void;
+  onCancel?: () => void;
 };
 
-export function WorkEntryForm({ onCreated }: WorkEntryFormProps) {
+export function WorkEntryForm({ onCreated, onCancel }: WorkEntryFormProps) {
   const [form] = Form.useForm<FormValues>();
   const [units, setUnits] = useState<MeasurementUnit[]>([]);
   const [unitsLoading, setUnitsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
 
   useEffect(() => {
     let cancelled = false;
@@ -82,10 +97,25 @@ export function WorkEntryForm({ onCreated }: WorkEntryFormProps) {
     }
   };
 
+  const unitSelect = (
+    <Select
+      placeholder="Единица"
+      loading={unitsLoading}
+      style={{ width: '100%' }}
+      popupMatchSelectWidth={false}
+      dropdownStyle={{ minWidth: 240 }}
+      options={units.map((u) => ({ value: u.name, label: u.name }))}
+      notFoundContent={
+        unitsLoading ? null : 'Нет единиц. Добавьте через Swagger.'
+      }
+    />
+  );
+
   return (
     <Form
       form={form}
       layout="vertical"
+      className="work-entry-form"
       onFinish={handleFinish}
       initialValues={{ completedAt: dayjs() }}
     >
@@ -94,7 +124,12 @@ export function WorkEntryForm({ onCreated }: WorkEntryFormProps) {
         name="completedAt"
         rules={[{ required: true, message: 'Укажите дату' }]}
       >
-        <DatePicker style={{ width: '100%' }} format="DD.MM.YYYY" />
+        <DatePicker
+          className="work-entry-form-date"
+          style={{ width: '100%', maxWidth: '100%' }}
+          format="DD.MM.YYYY"
+          inputReadOnly={isMobile}
+        />
       </Form.Item>
 
       <Form.Item
@@ -108,12 +143,12 @@ export function WorkEntryForm({ onCreated }: WorkEntryFormProps) {
         />
       </Form.Item>
 
-      <Form.Item label="Объём" required style={{ marginBottom: 0 }}>
-        <Input.Group compact style={{ display: 'flex' }}>
+      {isMobile ? (
+        <>
           <Form.Item
+            label="Объём"
             name="volume"
             rules={[{ required: true, message: 'Укажите объём' }]}
-            style={{ flex: 1, marginBottom: 24 }}
           >
             <InputNumber
               min={0.01}
@@ -124,21 +159,39 @@ export function WorkEntryForm({ onCreated }: WorkEntryFormProps) {
             />
           </Form.Item>
           <Form.Item
+            label="Единица измерения"
             name="unit"
             rules={[{ required: true, message: 'Выберите единицу измерения' }]}
-            style={{ width: 140, marginBottom: 24 }}
           >
-            <Select
-              placeholder="Ед."
-              loading={unitsLoading}
-              options={units.map((u) => ({ value: u.name, label: u.name }))}
-              notFoundContent={
-                unitsLoading ? null : 'Нет единиц. Добавьте через Swagger.'
-              }
-            />
+            {unitSelect}
           </Form.Item>
-        </Input.Group>
-      </Form.Item>
+        </>
+      ) : (
+        <Form.Item label="Объём" required style={{ marginBottom: 0 }}>
+          <Input.Group compact style={{ display: 'flex', gap: 8 }}>
+            <Form.Item
+              name="volume"
+              rules={[{ required: true, message: 'Укажите объём' }]}
+              style={{ flex: 1, minWidth: 0, marginBottom: 24 }}
+            >
+              <InputNumber
+                min={0.01}
+                max={WORK_ENTRY_VOLUME_MAX}
+                precision={2}
+                style={{ width: '100%' }}
+                placeholder="24"
+              />
+            </Form.Item>
+            <Form.Item
+              name="unit"
+              rules={[{ required: true, message: 'Выберите единицу измерения' }]}
+              style={{ flex: '0 0 140px', marginBottom: 24 }}
+            >
+              {unitSelect}
+            </Form.Item>
+          </Input.Group>
+        </Form.Item>
+      )}
 
       <Form.Item
         label="Исполнитель"
@@ -152,9 +205,18 @@ export function WorkEntryForm({ onCreated }: WorkEntryFormProps) {
       </Form.Item>
 
       <Form.Item>
-        <Button type="primary" htmlType="submit" loading={submitting}>
-          Добавить запись
-        </Button>
+        {onCancel ? (
+          <Space>
+            <Button onClick={onCancel}>Отмена</Button>
+            <Button type="primary" htmlType="submit" loading={submitting}>
+              Добавить запись
+            </Button>
+          </Space>
+        ) : (
+          <Button type="primary" htmlType="submit" loading={submitting}>
+            Добавить запись
+          </Button>
+        )}
       </Form.Item>
     </Form>
   );

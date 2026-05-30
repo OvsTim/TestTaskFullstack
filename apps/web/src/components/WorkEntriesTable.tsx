@@ -1,4 +1,5 @@
-import { Button, DatePicker, Popconfirm, Space, Table, message } from 'antd';
+import { DeleteOutlined } from '@ant-design/icons';
+import { Button, DatePicker, Grid, Popconfirm, Space, Table, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
@@ -10,6 +11,8 @@ import {
   fetchWorkEntries,
   type WorkEntry,
 } from '../api/work-entries';
+
+const { useBreakpoint } = Grid;
 
 function formatDate(value: string) {
   return dayjs(value).format('DD.MM.YYYY');
@@ -25,6 +28,8 @@ export function WorkEntriesTable({ reloadKey = 0 }: WorkEntriesTableProps) {
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(
     null,
   );
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
 
   const loadEntries = useCallback(async () => {
     setLoading(true);
@@ -67,29 +72,32 @@ export function WorkEntriesTable({ reloadKey = 0 }: WorkEntriesTableProps) {
       dataIndex: 'completedAt',
       key: 'completedAt',
       render: formatDate,
-      width: 120,
+      width: 100,
     },
     {
       title: 'Работы',
       dataIndex: 'workName',
       key: 'workName',
+      ellipsis: true,
     },
     {
       title: 'Объём',
       key: 'volume',
-      width: 120,
+      width: 100,
       render: (_, record) => `${record.volume} ${record.unit}`,
     },
     {
       title: 'Исполнитель',
       dataIndex: 'performer',
       key: 'performer',
-      width: 180,
+      width: 140,
+      ellipsis: true,
     },
     {
       title: '',
       key: 'actions',
-      width: 100,
+      width: isMobile ? 48 : 100,
+      fixed: 'right',
       render: (_, record) => (
         <Popconfirm
           title="Удалить запись?"
@@ -97,9 +105,13 @@ export function WorkEntriesTable({ reloadKey = 0 }: WorkEntriesTableProps) {
           okText="Да"
           cancelText="Нет"
         >
-          <Button type="link" danger size="small">
-            Удалить
-          </Button>
+          {isMobile ? (
+            <Button type="link" danger size="small" icon={<DeleteOutlined />} />
+          ) : (
+            <Button type="link" danger size="small">
+              Удалить
+            </Button>
+          )}
         </Popconfirm>
       ),
     },
@@ -113,6 +125,7 @@ export function WorkEntriesTable({ reloadKey = 0 }: WorkEntriesTableProps) {
         format="DD.MM.YYYY"
         allowEmpty={[true, true]}
         placeholder={['С', 'По']}
+        style={{ width: '100%', maxWidth: isMobile ? '100%' : 360 }}
       />
       <Table
         rowKey="id"
@@ -120,6 +133,7 @@ export function WorkEntriesTable({ reloadKey = 0 }: WorkEntriesTableProps) {
         dataSource={entries}
         loading={loading}
         pagination={false}
+        scroll={{ x: 640 }}
         locale={{ emptyText: 'Записей пока нет' }}
       />
     </Space>

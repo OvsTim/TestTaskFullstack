@@ -12,3 +12,14 @@ body {
 #root {
   min-height: 100vh;
 }
+
+@media (max-width: 767px) {
+  .ant-table {
+    font-size: 13px;
+  }
+
+  .work-entry-form-date.ant-picker {
+    width: 100%;
+    max-width: 100%;
+  }
+}
