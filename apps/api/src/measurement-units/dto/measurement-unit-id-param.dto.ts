@@ -5,13 +5,13 @@ import { ErrorMessages } from '../../common/errors/error-messages';
 /** Prisma @default(cuid()) */
 const CUID_PATTERN = /^c[a-z0-9]{24}$/;
 
-export class WorkEntryIdParamDto {
+export class MeasurementUnitIdParamDto {
   @ApiProperty({
     example: 'clxyz1234567890abcdef',
-    description: 'Идентификатор записи (cuid)',
+    description: 'Идентификатор единицы измерения (cuid)',
   })
   @IsString()
   @IsNotEmpty()
-  @Matches(CUID_PATTERN, { message: ErrorMessages.INVALID_WORK_ENTRY_ID })
+  @Matches(CUID_PATTERN, { message: ErrorMessages.INVALID_MEASUREMENT_UNIT_ID })
   id!: string;
 }

@@ -1,12 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class ValidationErrorResponseDto {
+export class ApiErrorResponseDto {
   @ApiProperty({ example: 400 })
   statusCode!: number;
 
   @ApiProperty({
-    example: ['completedAt must be a valid ISO 8601 date string'],
+    example: 'Ошибка валидации данных',
     oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }],
+    description: 'Описание ошибки или список ошибок валидации',
   })
   message!: string | string[];
 

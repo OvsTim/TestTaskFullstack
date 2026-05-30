@@ -36,6 +36,7 @@ pnpm install
 docker compose up -d db
 pnpm db:generate
 pnpm db:migrate
+pnpm db:seed      # начальный справочник единиц: м³, м², м, кг, шт
 ```
 
 По умолчанию Postgres в Docker доступен на **localhost:15432**. Порты 5432/5433 на macOS часто заняты локальным PostgreSQL. Свободный порт: `lsof -i :15432`; свой порт — `POSTGRES_PORT` и тот же порт в `DATABASE_URL`.
@@ -59,6 +60,7 @@ pnpm dev
 | `pnpm build` | Сборка всех приложений |
 | `pnpm db:migrate` | Prisma migrate dev |
 | `pnpm db:generate` | Генерация Prisma Client |
+| `pnpm db:seed` | Начальные единицы измерения в справочнике |
 
 ## API (MVP)
 
@@ -66,14 +68,29 @@ pnpm dev
 
 | Метод | Путь | Описание |
 |-------|------|----------|
-| GET | `/api/work-entries?from=&to=&sort=` | Список записей |
+| GET | `/api/work-entries?page=&limit=&from=&to=&sort=` | Список записей (с пагинацией) |
 | POST | `/api/work-entries` | Создание записи |
 | DELETE | `/api/work-entries/:id` | Удаление |
+| GET | `/api/measurement-units` | Список единиц измерения (справочник) |
+| GET | `/api/measurement-units/:id` | Одна единица измерения |
+| POST | `/api/measurement-units` | Создать единицу в справочнике |
+| PATCH | `/api/measurement-units/:id` | Изменить единицу |
+| DELETE | `/api/measurement-units/:id` | Удалить единицу |
 | GET | `/api/health` | Проверка API |
 
-Query-параметры списка: `from`, `to` (даты ISO, например `2026-05-01`), `sort` — `asc` или `desc` (по умолчанию `desc`).
+Query-параметры списка:
 
-Пример тела POST (Try it out в Swagger):
+| Параметр | По умолчанию | Описание |
+|----------|--------------|----------|
+| `page` | `1` | Номер страницы (1-based) |
+| `limit` | `20` | Записей на странице (1–100) |
+| `from` | — | Фильтр: дата выполнения ≥ from (ISO, `2026-05-01`) |
+| `to` | — | Фильтр: дата выполнения ≤ to (ISO, `2026-05-31`) |
+| `sort` | `desc` | Сортировка по дате: `asc` или `desc` |
+
+Ответ — объект `{ data: WorkEntry[], meta: { total, page, limit, totalPages } }`.
+
+Пример тела POST для записи журнала (Try it out в Swagger):
 
 ```json
 {
@@ -84,6 +101,22 @@ Query-параметры списка: `from`, `to` (даты ISO, наприм�
   "performer": "Иванов И.И."
 }
 ```
+
+Поле `unit` в записи журнала — **строковый снимок** выбранной единицы из справочника (без FK в БД). При переименовании или удалении единицы в справочнике уже созданные записи сохраняют прежнее значение `unit`.
+
+### Справочник единиц измерения
+
+Управление справочником — через Swagger (`/api/docs`). На фронте при добавлении записи список подгружается отдельным запросом `GET /api/measurement-units` и отображается в выпадающем списке.
+
+Пример создания единицы:
+
+```json
+{
+  "name": "м³"
+}
+```
+
+После `pnpm db:seed` в справочнике уже есть: `м³`, `м²`, `м`, `кг`, `шт`.
 
 ## Переменные окружения
 

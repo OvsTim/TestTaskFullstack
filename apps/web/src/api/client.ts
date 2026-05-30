@@ -1,3 +1,5 @@
+import { parseApiError } from './errors';
+
 const baseUrl = import.meta.env.VITE_API_URL ?? '';
 
 export async function apiFetch<T>(
@@ -13,8 +15,8 @@ export async function apiFetch<T>(
   });
 
   if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || `Request failed: ${response.status}`);
+    const message = await parseApiError(response);
+    throw new Error(message);
   }
 
   if (response.status === 204) {

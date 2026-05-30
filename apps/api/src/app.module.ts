@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { join } from 'path';
 import { AppController } from './app.controller';
 import { PrismaModule } from './prisma/prisma.module';
+import { MeasurementUnitsModule } from './measurement-units/measurement-units.module';
 import { WorkEntriesModule } from './work-entries/work-entries.module';
 
 @Module({
@@ -16,6 +17,7 @@ import { WorkEntriesModule } from './work-entries/work-entries.module';
     }),
     PrismaModule,
     WorkEntriesModule,
+    MeasurementUnitsModule,
   ],
   controllers: [AppController],
 })

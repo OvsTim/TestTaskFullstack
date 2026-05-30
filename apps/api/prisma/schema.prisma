@@ -7,6 +7,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model MeasurementUnit {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+}
+
 model WorkEntry {
   id          String   @id @default(cuid())
   completedAt DateTime @db.Date

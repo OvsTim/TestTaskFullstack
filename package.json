@@ -7,7 +7,9 @@
     "lint": "turbo lint",
     "db:generate": "dotenv -e .env -- pnpm --filter api exec prisma generate",
     "db:migrate": "dotenv -e .env -- pnpm --filter api exec prisma migrate dev",
-    "db:push": "dotenv -e .env -- pnpm --filter api exec prisma db push"
+    "db:push": "dotenv -e .env -- pnpm --filter api exec prisma db push",
+    "db:seed": "dotenv -e .env -- pnpm --filter api exec prisma db seed",
+    "test:e2e": "dotenv -e .env -- pnpm --filter api test:e2e"
   },
   "devDependencies": {
     "dotenv-cli": "^8.0.0",
