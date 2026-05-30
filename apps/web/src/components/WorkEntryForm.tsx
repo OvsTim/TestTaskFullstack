@@ -11,7 +11,7 @@ import {
 } from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 const { useBreakpoint } = Grid;
 import { fetchMeasurementUnits, type MeasurementUnit } from '../api/measurement-units';
@@ -20,7 +20,9 @@ import {
   WORK_ENTRY_PERFORMER_MAX_LENGTH,
   WORK_ENTRY_VOLUME_MAX,
   createWorkEntry,
+  updateWorkEntry,
   type CreateWorkEntryBody,
+  type WorkEntry,
 } from '../api/work-entries';
 
 type FormValues = {
@@ -32,11 +34,23 @@ type FormValues = {
 };
 
 type WorkEntryFormProps = {
-  onCreated: () => void;
+  entry?: WorkEntry;
+  onSuccess: () => void;
   onCancel?: () => void;
 };
 
-export function WorkEntryForm({ onCreated, onCancel }: WorkEntryFormProps) {
+function entryToFormValues(entry: WorkEntry): FormValues {
+  return {
+    completedAt: dayjs(entry.completedAt),
+    workName: entry.workName,
+    volume: Number(entry.volume),
+    unit: entry.unit,
+    performer: entry.performer,
+  };
+}
+
+export function WorkEntryForm({ entry, onSuccess, onCancel }: WorkEntryFormProps) {
+  const isEdit = entry !== undefined;
   const [form] = Form.useForm<FormValues>();
   const [units, setUnits] = useState<MeasurementUnit[]>([]);
   const [workTypes, setWorkTypes] = useState<WorkType[]>([]);
@@ -77,6 +91,37 @@ export function WorkEntryForm({ onCreated, onCancel }: WorkEntryFormProps) {
     };
   }, []);
 
+  useEffect(() => {
+    if (entry) {
+      form.setFieldsValue(entryToFormValues(entry));
+    } else {
+      form.resetFields();
+      form.setFieldsValue({ completedAt: dayjs() });
+    }
+  }, [entry, form]);
+
+  const workTypeOptions = useMemo(() => {
+    const names = new Set(workTypes.map((t) => t.name));
+    const options = workTypes.map((t) => ({ value: t.name, label: t.name }));
+
+    if (entry?.workName && !names.has(entry.workName)) {
+      return [{ value: entry.workName, label: entry.workName }, ...options];
+    }
+
+    return options;
+  }, [entry?.workName, workTypes]);
+
+  const unitOptions = useMemo(() => {
+    const names = new Set(units.map((u) => u.name));
+    const options = units.map((u) => ({ value: u.name, label: u.name }));
+
+    if (entry?.unit && !names.has(entry.unit)) {
+      return [{ value: entry.unit, label: entry.unit }, ...options];
+    }
+
+    return options;
+  }, [entry?.unit, units]);
+
   const handleFinish = async (values: FormValues) => {
     const input: CreateWorkEntryBody = {
       completedAt: values.completedAt.format('YYYY-MM-DD'),
@@ -88,13 +133,23 @@ export function WorkEntryForm({ onCreated, onCancel }: WorkEntryFormProps) {
 
     setSubmitting(true);
     try {
-      await createWorkEntry(input);
-      message.success('Запись добавлена');
-      form.resetFields();
-      onCreated();
+      if (isEdit) {
+        await updateWorkEntry(entry.id, input);
+        message.success('Запись обновлена');
+      } else {
+        await createWorkEntry(input);
+        message.success('Запись добавлена');
+        form.resetFields();
+        form.setFieldsValue({ completedAt: dayjs() });
+      }
+      onSuccess();
     } catch (error: unknown) {
       message.error(
-        error instanceof Error ? error.message : 'Не удалось создать запись',
+        error instanceof Error
+          ? error.message
+          : isEdit
+            ? 'Не удалось обновить запись'
+            : 'Не удалось создать запись',
       );
     } finally {
       setSubmitting(false);
@@ -108,7 +163,7 @@ export function WorkEntryForm({ onCreated, onCancel }: WorkEntryFormProps) {
       style={{ width: '100%' }}
       popupMatchSelectWidth={false}
       styles={{ popup: { root: { minWidth: 280 } } }}
-      options={workTypes.map((t) => ({ value: t.name, label: t.name }))}
+      options={workTypeOptions}
       notFoundContent={
         workTypesLoading ? null : 'Нет видов работ. Добавьте через Swagger.'
       }
@@ -122,7 +177,7 @@ export function WorkEntryForm({ onCreated, onCancel }: WorkEntryFormProps) {
       style={{ width: '100%' }}
       popupMatchSelectWidth={false}
       styles={{ popup: { root: { minWidth: 240 } } }}
-      options={units.map((u) => ({ value: u.name, label: u.name }))}
+      options={unitOptions}
       notFoundContent={
         unitsLoading ? null : 'Нет единиц. Добавьте через Swagger.'
       }
@@ -135,7 +190,7 @@ export function WorkEntryForm({ onCreated, onCancel }: WorkEntryFormProps) {
       layout="vertical"
       className="work-entry-form"
       onFinish={handleFinish}
-      initialValues={{ completedAt: dayjs() }}
+      initialValues={entry ? entryToFormValues(entry) : { completedAt: dayjs() }}
     >
       <Form.Item
         label="Дата выполнения"
@@ -224,12 +279,12 @@ export function WorkEntryForm({ onCreated, onCancel }: WorkEntryFormProps) {
           <Space>
             <Button onClick={onCancel}>Отмена</Button>
             <Button type="primary" htmlType="submit" loading={submitting}>
-              Добавить запись
+              {isEdit ? 'Сохранить' : 'Добавить запись'}
             </Button>
           </Space>
         ) : (
           <Button type="primary" htmlType="submit" loading={submitting}>
-            Добавить запись
+            {isEdit ? 'Сохранить' : 'Добавить запись'}
           </Button>
         )}
       </Form.Item>

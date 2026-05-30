@@ -27,8 +27,8 @@ export type CreateWorkEntryBody = {
   performer: string;
 };
 
-/** @deprecated используйте CreateWorkEntryBody */
-export type CreateWorkEntryInput = CreateWorkEntryBody;
+/** Тело PATCH /api/work-entries/:id — UpdateWorkEntryDto */
+export type UpdateWorkEntryBody = CreateWorkEntryBody;
 
 export type WorkEntrySort = 'asc' | 'desc';
 
@@ -92,6 +92,13 @@ export function fetchWorkEntries(query: WorkEntriesQuery = {}) {
 export function createWorkEntry(body: CreateWorkEntryBody) {
   return apiFetch<WorkEntry>(WORK_ENTRIES_PATH, {
     method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export function updateWorkEntry(id: string, body: UpdateWorkEntryBody) {
+  return apiFetch<WorkEntry>(`${WORK_ENTRIES_PATH}/${id}`, {
+    method: 'PATCH',
     body: JSON.stringify(body),
   });
 }

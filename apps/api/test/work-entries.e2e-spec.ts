@@ -156,6 +156,82 @@ describe('WorkEntries (e2e)', () => {
       expect(page2.body.data).toHaveLength(2);
       expect(page2.body.meta.page).toBe(2);
     });
+
+    it('PATCH updates all fields and returns updated entry', async () => {
+      const { response: created } = await createEntry();
+      const originalCreatedAt = created.body.createdAt;
+
+      await ensureWorkType('Бетонирование');
+
+      const updatedBody = {
+        completedAt: '2026-06-15',
+        workName: 'Бетонирование',
+        volume: 48.5,
+        unit: 'м²',
+        performer: 'Петров П.П.',
+      };
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/work-entries/${created.body.id}`)
+        .send(updatedBody)
+        .expect(200);
+
+      expect(response.body).toMatchObject({
+        id: created.body.id,
+        workName: updatedBody.workName,
+        unit: updatedBody.unit,
+        performer: updatedBody.performer,
+        createdAt: originalCreatedAt,
+      });
+      expect(String(response.body.volume)).toBe(String(updatedBody.volume));
+      expect(response.body.completedAt).toBeDefined();
+    });
+
+    it('PATCH changes are visible in GET list', async () => {
+      const { response: created } = await createEntry();
+
+      await request(app.getHttpServer())
+        .patch(`/api/work-entries/${created.body.id}`)
+        .send({ ...validCreateWorkEntry, performer: 'Сидоров С.С.' })
+        .expect(200);
+
+      const listResponse = await request(app.getHttpServer())
+        .get('/api/work-entries')
+        .expect(200);
+
+      expect(listResponse.body.data).toHaveLength(1);
+      expect(listResponse.body.data[0].performer).toBe('Сидоров С.С.');
+    });
+
+    it('rejects legacy workName when work type was removed from dictionary', async () => {
+      const { response: created } = await createEntry({
+        workName: 'Устаревший вид',
+      });
+
+      await prisma.workType.deleteMany({ where: { name: 'Устаревший вид' } });
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/work-entries/${created.body.id}`)
+        .send({
+          ...validCreateWorkEntry,
+          workName: 'Устаревший вид',
+          volume: 10,
+        });
+
+      expectError(response, 400, ErrorMessages.WORK_TYPE_NAME_UNKNOWN);
+    });
+
+    it('PATCH updates workName to another dictionary value', async () => {
+      const { response: created } = await createEntry();
+      await ensureWorkType('Арматурные работы');
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/work-entries/${created.body.id}`)
+        .send({ ...validCreateWorkEntry, workName: 'Арматурные работы' })
+        .expect(200);
+
+      expect(response.body.workName).toBe('Арматурные работы');
+    });
   });
 
   describe('POST validation (400)', () => {
@@ -313,6 +389,150 @@ describe('WorkEntries (e2e)', () => {
         .get('/api/work-entries')
         .query({ from: '2026-05-31', to: '2026-05-01' });
       expectError(response, 400, 'Дата «от» не может быть позже даты «до»');
+    });
+  });
+
+  describe('PATCH validation (400)', () => {
+    it('rejects empty body', async () => {
+      const { response: created } = await createEntry();
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/work-entries/${created.body.id}`)
+        .send({});
+      expectError(response, 400);
+    });
+
+    it('rejects invalid completedAt', async () => {
+      const { response: created } = await createEntry();
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/work-entries/${created.body.id}`)
+        .send({ ...validCreateWorkEntry, completedAt: 'not-a-date' });
+      expectError(response, 400, 'ISO 8601');
+    });
+
+    it('rejects empty workName', async () => {
+      const { response: created } = await createEntry();
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/work-entries/${created.body.id}`)
+        .send({ ...validCreateWorkEntry, workName: '' });
+      expectError(response, 400);
+    });
+
+    it('rejects unknown workName not in dictionary', async () => {
+      const { response: created } = await createEntry();
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/work-entries/${created.body.id}`)
+        .send({ ...validCreateWorkEntry, workName: 'Несуществующий вид работ' });
+      expectError(response, 400, ErrorMessages.WORK_TYPE_NAME_UNKNOWN);
+    });
+
+    it('rejects empty unit', async () => {
+      const { response: created } = await createEntry();
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/work-entries/${created.body.id}`)
+        .send({ ...validCreateWorkEntry, unit: '' });
+      expectError(response, 400);
+    });
+
+    it('rejects empty performer', async () => {
+      const { response: created } = await createEntry();
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/work-entries/${created.body.id}`)
+        .send({ ...validCreateWorkEntry, performer: '' });
+      expectError(response, 400);
+    });
+
+    it('rejects zero volume', async () => {
+      const { response: created } = await createEntry();
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/work-entries/${created.body.id}`)
+        .send({ ...validCreateWorkEntry, volume: 0 });
+      expectError(response, 400, 'положительным');
+    });
+
+    it('rejects negative volume', async () => {
+      const { response: created } = await createEntry();
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/work-entries/${created.body.id}`)
+        .send({ ...validCreateWorkEntry, volume: -1 });
+      expectError(response, 400);
+    });
+
+    it('rejects volume with more than 2 decimal places', async () => {
+      const { response: created } = await createEntry();
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/work-entries/${created.body.id}`)
+        .send({ ...validCreateWorkEntry, volume: 1.234 });
+      expectError(response, 400);
+    });
+
+    it('rejects volume above maximum', async () => {
+      const { response: created } = await createEntry();
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/work-entries/${created.body.id}`)
+        .send({ ...validCreateWorkEntry, volume: 10000000000 });
+      expectError(response, 400);
+    });
+
+    it('rejects workName longer than 500 characters', async () => {
+      const { response: created } = await createEntry();
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/work-entries/${created.body.id}`)
+        .send({ ...validCreateWorkEntry, workName: 'a'.repeat(501) });
+      expectError(response, 400, '500');
+    });
+
+    it('rejects unit longer than 50 characters', async () => {
+      const { response: created } = await createEntry();
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/work-entries/${created.body.id}`)
+        .send({ ...validCreateWorkEntry, unit: 'a'.repeat(51) });
+      expectError(response, 400, '50');
+    });
+
+    it('rejects performer longer than 200 characters', async () => {
+      const { response: created } = await createEntry();
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/work-entries/${created.body.id}`)
+        .send({ ...validCreateWorkEntry, performer: 'a'.repeat(201) });
+      expectError(response, 400, '200');
+    });
+
+    it('rejects extra properties', async () => {
+      const { response: created } = await createEntry();
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/work-entries/${created.body.id}`)
+        .send({ ...validCreateWorkEntry, extra: true });
+      expectError(response, 400);
+    });
+  });
+
+  describe('PATCH id handling', () => {
+    it('rejects invalid id format', async () => {
+      const response = await request(app.getHttpServer())
+        .patch(`/api/work-entries/${INVALID_CUID}`)
+        .send(validCreateWorkEntry);
+      expectError(response, 400, ErrorMessages.INVALID_WORK_ENTRY_ID);
+    });
+
+    it('returns 404 for non-existent id', async () => {
+      const response = await request(app.getHttpServer())
+        .patch(`/api/work-entries/${NON_EXISTENT_CUID}`)
+        .send(validCreateWorkEntry);
+      expectError(response, 404, ErrorMessages.WORK_ENTRY_NOT_FOUND);
     });
   });
 

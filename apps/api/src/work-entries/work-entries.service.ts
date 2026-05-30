@@ -4,6 +4,7 @@ import { ErrorMessages } from '../common/errors/error-messages';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateWorkEntryDto } from './dto/create-work-entry.dto';
 import { QueryWorkEntriesDto } from './dto/query-work-entries.dto';
+import { UpdateWorkEntryDto } from './dto/update-work-entry.dto';
 
 @Injectable()
 export class WorkEntriesService {
@@ -52,6 +53,31 @@ export class WorkEntriesService {
     }
 
     return this.prisma.workEntry.create({
+      data: {
+        completedAt: new Date(dto.completedAt),
+        workName: dto.workName,
+        volume: dto.volume,
+        unit: dto.unit,
+        performer: dto.performer,
+      },
+    });
+  }
+
+  async update(id: string, dto: UpdateWorkEntryDto) {
+    const existing = await this.prisma.workEntry.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException(ErrorMessages.WORK_ENTRY_NOT_FOUND);
+    }
+
+    const workType = await this.prisma.workType.findUnique({
+      where: { name: dto.workName },
+    });
+    if (!workType) {
+      throw new BadRequestException(ErrorMessages.WORK_TYPE_NAME_UNKNOWN);
+    }
+
+    return this.prisma.workEntry.update({
+      where: { id },
       data: {
         completedAt: new Date(dto.completedAt),
         workName: dto.workName,

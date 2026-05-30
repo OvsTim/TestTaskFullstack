@@ -1,5 +1,6 @@
 import { Button, Card, Col, Grid, Layout, Modal, Row, Typography } from 'antd';
 import { useState } from 'react';
+import type { WorkEntry } from './api/work-entries';
 import { WorkEntriesTable } from './components/WorkEntriesTable';
 import { WorkEntryForm } from './components/WorkEntryForm';
 
@@ -7,19 +8,24 @@ const { Header, Content } = Layout;
 const { Title } = Typography;
 const { useBreakpoint } = Grid;
 
+type ModalState =
+  | { mode: 'create' }
+  | { mode: 'edit'; entry: WorkEntry }
+  | null;
+
 function App() {
   const [reloadKey, setReloadKey] = useState(0);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [modal, setModal] = useState<ModalState>(null);
   const screens = useBreakpoint();
   const isMobile = !screens.md;
 
-  const handleCreated = () => {
+  const handleSuccess = () => {
     setReloadKey((k) => k + 1);
-    setModalOpen(false);
+    setModal(null);
   };
 
   const addButton = (
-    <Button type="primary" onClick={() => setModalOpen(true)}>
+    <Button type="primary" onClick={() => setModal({ mode: 'create' })}>
       Добавить запись
     </Button>
   );
@@ -50,24 +56,29 @@ function App() {
         <Row gutter={[24, 24]}>
           <Col xs={24}>
             <Card title="Записи" extra={!isMobile ? addButton : undefined}>
-              <WorkEntriesTable reloadKey={reloadKey} />
+              <WorkEntriesTable
+                reloadKey={reloadKey}
+                onEdit={(entry) => setModal({ mode: 'edit', entry })}
+              />
             </Card>
           </Col>
         </Row>
       </Content>
 
       <Modal
-        title="Добавить запись"
-        open={modalOpen}
-        onCancel={() => setModalOpen(false)}
+        title={modal?.mode === 'edit' ? 'Редактировать запись' : 'Добавить запись'}
+        open={modal !== null}
+        onCancel={() => setModal(null)}
         footer={null}
         destroyOnHidden
         width={isMobile ? 'calc(100vw - 32px)' : 520}
         styles={{ body: { padding: isMobile ? '16px 12px' : undefined } }}
       >
         <WorkEntryForm
-          onCreated={handleCreated}
-          onCancel={() => setModalOpen(false)}
+          key={modal?.mode === 'edit' ? modal.entry.id : 'create'}
+          entry={modal?.mode === 'edit' ? modal.entry : undefined}
+          onSuccess={handleSuccess}
+          onCancel={() => setModal(null)}
         />
       </Modal>
     </Layout>

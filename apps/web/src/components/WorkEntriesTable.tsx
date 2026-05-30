@@ -1,18 +1,33 @@
-import { DeleteOutlined } from '@ant-design/icons';
-import { Button, DatePicker, Flex, Grid, Popconfirm, Table, message } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+import { DeleteOutlined, EditOutlined } from '@ant-design/icons';
+import { Button, DatePicker, Flex, Grid, Popconfirm, Space, Table, message } from 'antd';
+import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
+import type {
+  FilterValue,
+  SorterResult,
+  TableCurrentDataSource,
+} from 'antd/es/table/interface';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useState } from 'react';
+import type { PaginationMeta } from '../api/pagination';
 import {
+  WORK_ENTRIES_DEFAULT_LIMIT,
+  WORK_ENTRIES_DEFAULT_PAGE,
   WORK_ENTRIES_DEFAULT_SORT,
-  WORK_ENTRIES_LIMIT_MAX,
   deleteWorkEntry,
   fetchWorkEntries,
   type WorkEntry,
+  type WorkEntrySort,
 } from '../api/work-entries';
 
 const { useBreakpoint } = Grid;
+
+const DEFAULT_META: PaginationMeta = {
+  total: 0,
+  page: WORK_ENTRIES_DEFAULT_PAGE,
+  limit: WORK_ENTRIES_DEFAULT_LIMIT,
+  totalPages: 0,
+};
 
 function formatDate(value: string) {
   return dayjs(value).format('DD.MM.YYYY');
@@ -20,11 +35,16 @@ function formatDate(value: string) {
 
 type WorkEntriesTableProps = {
   reloadKey?: number;
+  onEdit: (entry: WorkEntry) => void;
 };
 
-export function WorkEntriesTable({ reloadKey = 0 }: WorkEntriesTableProps) {
+export function WorkEntriesTable({ reloadKey = 0, onEdit }: WorkEntriesTableProps) {
   const [entries, setEntries] = useState<WorkEntry[]>([]);
+  const [meta, setMeta] = useState<PaginationMeta>(DEFAULT_META);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(WORK_ENTRIES_DEFAULT_PAGE);
+  const [limit, setLimit] = useState(WORK_ENTRIES_DEFAULT_LIMIT);
+  const [sort, setSort] = useState<WorkEntrySort>(WORK_ENTRIES_DEFAULT_SORT);
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(
     null,
   );
@@ -35,12 +55,14 @@ export function WorkEntriesTable({ reloadKey = 0 }: WorkEntriesTableProps) {
     setLoading(true);
     try {
       const response = await fetchWorkEntries({
+        page,
+        limit,
+        sort,
         from: dateRange?.[0]?.format('YYYY-MM-DD'),
         to: dateRange?.[1]?.format('YYYY-MM-DD'),
-        sort: WORK_ENTRIES_DEFAULT_SORT,
-        limit: WORK_ENTRIES_LIMIT_MAX,
       });
       setEntries(response.data);
+      setMeta(response.meta);
     } catch (error: unknown) {
       message.error(
         error instanceof Error ? error.message : 'Не удалось загрузить записи',
@@ -48,11 +70,55 @@ export function WorkEntriesTable({ reloadKey = 0 }: WorkEntriesTableProps) {
     } finally {
       setLoading(false);
     }
-  }, [dateRange]);
+  }, [dateRange, limit, page, sort]);
 
   useEffect(() => {
     loadEntries();
   }, [loadEntries, reloadKey]);
+
+  const handleDateRangeChange = (range: [Dayjs | null, Dayjs | null] | null) => {
+    setDateRange(range);
+    setPage(WORK_ENTRIES_DEFAULT_PAGE);
+  };
+
+  const handleTableChange = (
+    pagination: TablePaginationConfig,
+    _filters: Record<string, FilterValue | null>,
+    sorter: SorterResult<WorkEntry> | SorterResult<WorkEntry>[],
+    extra: TableCurrentDataSource<WorkEntry>,
+  ) => {
+    if (extra.action === 'paginate') {
+      const nextPage = pagination.current ?? WORK_ENTRIES_DEFAULT_PAGE;
+      const nextLimit = pagination.pageSize ?? WORK_ENTRIES_DEFAULT_LIMIT;
+
+      if (nextLimit !== limit) {
+        setLimit(nextLimit);
+        setPage(WORK_ENTRIES_DEFAULT_PAGE);
+      } else if (nextPage !== page) {
+        setPage(nextPage);
+      }
+      return;
+    }
+
+    if (extra.action === 'sort') {
+      const dateSorter = Array.isArray(sorter) ? sorter[0] : sorter;
+      let nextSort: WorkEntrySort;
+
+      if (dateSorter.order === 'ascend') {
+        nextSort = 'asc';
+      } else if (dateSorter.order === 'descend') {
+        nextSort = 'desc';
+      } else {
+        // Controlled sortOrder always set — Ant Design tries to cancel on 3rd click
+        nextSort = sort === 'desc' ? 'asc' : 'desc';
+      }
+
+      if (nextSort !== sort) {
+        setSort(nextSort);
+        setPage(WORK_ENTRIES_DEFAULT_PAGE);
+      }
+    }
+  };
 
   const handleDelete = async (id: string) => {
     try {
@@ -72,7 +138,10 @@ export function WorkEntriesTable({ reloadKey = 0 }: WorkEntriesTableProps) {
       dataIndex: 'completedAt',
       key: 'completedAt',
       render: formatDate,
-      width: 100,
+      width: 112,
+      sorter: true,
+      sortDirections: ['ascend', 'descend'],
+      sortOrder: sort === 'asc' ? 'ascend' : 'descend',
     },
     {
       title: 'Работы',
@@ -96,23 +165,37 @@ export function WorkEntriesTable({ reloadKey = 0 }: WorkEntriesTableProps) {
     {
       title: '',
       key: 'actions',
-      width: isMobile ? 48 : 100,
+      width: isMobile ? 88 : 160,
       fixed: 'right',
       render: (_, record) => (
-        <Popconfirm
-          title="Удалить запись?"
-          onConfirm={() => handleDelete(record.id)}
-          okText="Да"
-          cancelText="Нет"
-        >
+        <Space size={0}>
           {isMobile ? (
-            <Button type="link" danger size="small" icon={<DeleteOutlined />} />
+            <Button
+              type="link"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => onEdit(record)}
+            />
           ) : (
-            <Button type="link" danger size="small">
-              Удалить
+            <Button type="link" size="small" onClick={() => onEdit(record)}>
+              Изменить
             </Button>
           )}
-        </Popconfirm>
+          <Popconfirm
+            title="Удалить запись?"
+            onConfirm={() => handleDelete(record.id)}
+            okText="Да"
+            cancelText="Нет"
+          >
+            {isMobile ? (
+              <Button type="link" danger size="small" icon={<DeleteOutlined />} />
+            ) : (
+              <Button type="link" danger size="small">
+                Удалить
+              </Button>
+            )}
+          </Popconfirm>
+        </Space>
       ),
     },
   ];
@@ -121,7 +204,7 @@ export function WorkEntriesTable({ reloadKey = 0 }: WorkEntriesTableProps) {
     <Flex vertical gap="middle" style={{ width: '100%' }}>
       <DatePicker.RangePicker
         value={dateRange}
-        onChange={(range) => setDateRange(range)}
+        onChange={handleDateRangeChange}
         format="DD.MM.YYYY"
         allowEmpty={[true, true]}
         placeholder={['С', 'По']}
@@ -132,7 +215,15 @@ export function WorkEntriesTable({ reloadKey = 0 }: WorkEntriesTableProps) {
         columns={columns}
         dataSource={entries}
         loading={loading}
-        pagination={false}
+        onChange={handleTableChange}
+        pagination={{
+          current: page,
+          pageSize: limit,
+          total: meta.total,
+          showSizeChanger: true,
+          pageSizeOptions: ['10', '20', '50', '100'],
+          showTotal: (total) => `Всего ${total}`,
+        }}
         scroll={{ x: 640 }}
         locale={{ emptyText: 'Записей пока нет' }}
         style={{ width: '100%' }}

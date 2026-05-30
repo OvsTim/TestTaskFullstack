@@ -70,6 +70,7 @@ pnpm dev
 |-------|------|----------|
 | GET | `/api/work-entries?page=&limit=&from=&to=&sort=` | Список записей (с пагинацией) |
 | POST | `/api/work-entries` | Создание записи |
+| PATCH | `/api/work-entries/:id` | Изменение записи |
 | DELETE | `/api/work-entries/:id` | Удаление |
 | GET | `/api/work-types` | Список видов работ (справочник) |
 | GET | `/api/work-types/:id` | Один вид работ |
